@@ -4,22 +4,23 @@ import numpy as np
 # paths
 
 REPO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_LM_DIR = os.path.join(REPO_DIR, "data_lm")
-DATA_TRAIN_DIR = os.path.join(REPO_DIR, "data_train")
-DATA_TEST_DIR = os.path.join(REPO_DIR, "data_test")
+DECODING_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_LM_DIR = os.path.join(DECODING_DIR, "data_lm")
+DATA_TRAIN_DIR = os.path.join(DECODING_DIR, "data_train")
+DATA_TEST_DIR = os.path.join(DECODING_DIR, "data_test")
 MODEL_DIR = os.path.join(REPO_DIR, "models")
 RESULT_DIR = os.path.join(REPO_DIR, "results")
 SCORE_DIR = os.path.join(REPO_DIR, "scores")
 
-# GPT encoding model parameters
+# GPT encoding model parameters - REDUCED FOR TESTING
 
 TRIM = 5
-STIM_DELAYS = [1, 2, 3, 4]
-RESP_DELAYS = [-4, -3, -2, -1]
-ALPHAS = np.logspace(1, 3, 10)
-NBOOTS = 50
-VOXELS = 10000
-CHUNKLEN = 40
+STIM_DELAYS = [1, 2]  # Reduced from [1, 2, 3, 4]
+RESP_DELAYS = [-2, -1]  # Reduced from [-4, -3, -2, -1]
+ALPHAS = np.logspace(1, 3, 3)  # Reduced from 10 to 3 alpha values
+NBOOTS = 5  # Reduced from 50 to 5 bootstrap samples
+VOXELS = 100  # Reduced from 10000 to 100 voxels
+CHUNKLEN = 10  # Reduced from 40 to 10 chunks
 GPT_LAYER = 9
 GPT_WORDS = 5
 
@@ -39,6 +40,8 @@ WINDOW = 20
 
 # devices
 
-GPT_DEVICE = "cuda"
-EM_DEVICE = "cuda"
-SM_DEVICE = "cuda"
+
+# can change to "cuda" if GPU available
+GPT_DEVICE = "cpu"
+EM_DEVICE = "cpu"
+SM_DEVICE = "cpu"

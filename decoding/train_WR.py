@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--sessions", nargs = "+", type = int, 
-        default = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20])
+        default = [2, 5, 11, 14])  # Only sessions with available stories CHANGED
     args = parser.parse_args()
 
     # training stories
@@ -25,14 +25,20 @@ if __name__ == "__main__":
     for sess in args.sessions:
         stories.extend(sess_to_story[str(sess)])
 
+    print(f"Loaded {len(stories)} training stories from {len(args.sessions)} sessions")
+    print(f"Stories: {', '.join(stories)}")
+
     # ROI voxels
+    print(f"Loading brain regions for subject {args.subject}...")
     with open(os.path.join(config.DATA_TRAIN_DIR, "ROIs", "%s.json" % args.subject), "r") as f:
         vox = json.load(f)
-            
+    print(f"Loaded ROIs: auditory ({len(vox['auditory'])} voxels), speech ({len(vox['speech'])} voxels)")
+
     # estimate word rate model
     save_location = os.path.join(config.MODEL_DIR, args.subject)
     os.makedirs(save_location, exist_ok = True)
-    
+
+    print("Computing word timing sequences...")
     wordseqs = get_story_wordseqs(stories)
     rates = {}
     for story in stories:
@@ -43,12 +49,20 @@ if __name__ == "__main__":
     nz_rate = np.nan_to_num(nz_rate).reshape([-1, 1])
     mean_rate = np.mean(nz_rate)
     rate = nz_rate - mean_rate
+    print(f"Word rate data prepared (mean rate: {mean_rate:.3f} words/TR)")
     
     for roi in ["speech", "auditory"]:
+        print(f"\nTraining word rate model for {roi} region ({len(vox[roi])} voxels)...")
         resp = get_resp(args.subject, stories, stack = True, vox = vox[roi])
         delresp = make_delayed(resp, config.RESP_DELAYS)
         nchunks = int(np.ceil(delresp.shape[0] / 5 / config.CHUNKLEN))    
+        print(f"Running bootstrap ridge regression ({config.NBOOTS} boots, {nchunks} chunks, {len(config.ALPHAS)} alphas)...")
         weights, _, _ = bootstrap_ridge(delresp, rate, use_corr = False,
             alphas = config.ALPHAS, nboots = config.NBOOTS, chunklen = config.CHUNKLEN, nchunks = nchunks)
         np.savez(os.path.join(save_location, "word_rate_model_%s" % roi), 
             weights = weights, mean_rate = mean_rate, voxels = vox[roi])
+        print(f"Saved word_rate_model_{roi}.npz")
+
+    print("Word rate model training complete!")
+    print(f"Models saved in: {save_location}")
+    print("Next step: Run the decoder with run_decoder.py")
