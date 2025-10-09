@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--gpt", type = str, default = "perceived")
     parser.add_argument("--sessions", nargs = "+", type = int, 
-        default = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20])
+        default = [2, 5, 11, 14])  # Only sessions with available stories
     args = parser.parse_args()
 
     # training stories
@@ -25,39 +25,59 @@ if __name__ == "__main__":
         sess_to_story = json.load(f) 
     for sess in args.sessions:
         stories.extend(sess_to_story[str(sess)])
+    
+    print(f"Loaded {len(stories)} training stories from {len(args.sessions)} sessions")
+    print(f"Stories: {', '.join(stories[:5])}{'...' if len(stories) > 5 else ''}")
 
     # load gpt
+    print("Loading GPT model...")
     with open(os.path.join(config.DATA_LM_DIR, args.gpt, "vocab.json"), "r") as f:
         gpt_vocab = json.load(f)
     gpt = GPT(path = os.path.join(config.DATA_LM_DIR, args.gpt, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
+    print(f"GPT model loaded (layer {config.GPT_LAYER}, {config.GPT_WORDS} context words)")
     
     # estimate encoding model
+    print("Getting stimulus features...")
     rstim, tr_stats, word_stats = get_stim(stories, features)
+    print(f"Getting brain responses for subject {args.subject}...")
     rresp = get_resp(args.subject, stories, stack = True)
+    print(f"Data shapes: stimulus {rstim.shape}, response {rresp.shape}")
+    
     nchunks = int(np.ceil(rresp.shape[0] / 5 / config.CHUNKLEN))
+    print(f"Running bootstrap ridge regression ({config.NBOOTS} boots, {nchunks} chunks, {len(config.ALPHAS)} alphas)...")
     weights, alphas, bscorrs = bootstrap_ridge(rstim, rresp, use_corr = False, alphas = config.ALPHAS,
         nboots = config.NBOOTS, chunklen = config.CHUNKLEN, nchunks = nchunks)        
     bscorrs = bscorrs.mean(2).max(0)
     vox = np.sort(np.argsort(bscorrs)[-config.VOXELS:])
+    print(f"Selected top {config.VOXELS} voxels (max correlation: {bscorrs[vox].max():.3f})")
     del rstim, rresp
     
     # estimate noise model
+    print("Building noise model...")
     stim_dict = {story : get_stim([story], features, tr_stats = tr_stats) for story in stories}
     resp_dict = get_resp(args.subject, stories, stack = False, vox = vox)
     noise_model = np.zeros([len(vox), len(vox)])
-    for hstory in stories:
+    
+    print(f"Processing {len(stories)} leave-one-out iterations...")
+    for i, hstory in enumerate(stories):
+        if i % 5 == 0:  # Print progress every 5 stories
+            print(f"  Progress: {i+1}/{len(stories)} stories ({100*(i+1)/len(stories):.1f}%)")
         tstim, hstim = np.vstack([stim_dict[tstory] for tstory in stories if tstory != hstory]), stim_dict[hstory]
         tresp, hresp = np.vstack([resp_dict[tstory] for tstory in stories if tstory != hstory]), resp_dict[hstory]
         bs_weights = ridge(tstim, tresp, alphas[vox])
         resids = hresp - hstim.dot(bs_weights)
         bs_noise_model = resids.T.dot(resids)
         noise_model += bs_noise_model / np.diag(bs_noise_model).mean() / len(stories)
+    print("Noise model completed!")
     del stim_dict, resp_dict
     
     # save
+    print("Saving encoding model...")
     save_location = os.path.join(config.MODEL_DIR, args.subject)
     os.makedirs(save_location, exist_ok = True)
     np.savez(os.path.join(save_location, "encoding_model_%s" % args.gpt), 
         weights = weights, noise_model = noise_model, alphas = alphas, voxels = vox, stories = stories,
         tr_stats = np.array(tr_stats), word_stats = np.array(word_stats))
+    print(f"Encoding model saved to {save_location}/encoding_model_{args.gpt}.npz")
+    print("Training complete!")

@@ -1,5 +1,9 @@
 import numpy as np
-import tables
+try:
+    import tables
+except ImportError:
+    print("Warning: tables not available, using h5py fallback")
+    tables = None
 #from matplotlib.pyplot import figure, show
 import scipy.linalg
 
@@ -381,7 +385,14 @@ def plot_model_comparison_rois(corrs1, corrs2, name1, name2, roivoxels, roinames
 def save_table_file(filename, filedict):
     """Saves the variables in [filedict] in a hdf5 table file at [filename].
     """
-    hf = tables.openFile(filename, mode="w", title="save_file")
-    for vname, var in filedict.items():
-        hf.createArray("/", vname, var)
-    hf.close()
+    if tables is not None:
+        hf = tables.openFile(filename, mode="w", title="save_file")
+        for vname, var in filedict.items():
+            hf.createArray("/", vname, var)
+        hf.close()
+    else:
+        # Fallback to h5py
+        import h5py
+        with h5py.File(filename, 'w') as hf:
+            for vname, var in filedict.items():
+                hf.create_dataset(vname, data=var)
