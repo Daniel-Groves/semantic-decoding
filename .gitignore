@@ -1,0 +1,36 @@
+# Data directories - too large for git
+data_train/
+data_test/
+data_train_raw/
+data_test_raw/
+
+# Virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Model outputs and results (large files)
+models/
+results/
+scores/
+
+# Language model data (large)
+data_lm/
+
+# Development/testing scripts
+quick_eval_test.py
+view_results.py
+compare_predictions.py

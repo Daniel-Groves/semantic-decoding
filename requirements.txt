@@ -1,0 +1,51 @@
+# Semantic Decoding Dependencies
+# Compatible versions tested and working for the pipeline
+
+# Core scientific computing
+numpy==2.3.3
+scipy==1.16.2
+pandas==2.3.3
+scikit-learn==1.7.2
+matplotlib==3.10.6
+
+# Deep learning and transformers
+torch==2.8.0
+transformers==4.57.0
+tokenizers==0.22.1
+safetensors==0.6.2
+
+# Data handling
+h5py==3.14.0
+pyarrow==21.0.0
+
+# Natural language processing
+nltk==3.9.2
+
+# Evaluation metrics (CRITICAL: use specific version for compatibility)
+jiwer==2.2.0
+datasets==4.1.1
+evaluate==0.4.6
+bert-score==0.3.13
+
+# Required dependencies for above packages
+huggingface-hub==0.35.3
+tqdm==4.67.1
+requests==2.32.5
+PyYAML==6.0.3
+regex==2025.9.18
+packaging==25.0
+filelock==3.19.1
+fsspec==2025.9.0
+multiprocess==0.70.16
+dill==0.4.0
+xxhash==3.6.0
+
+# Text processing dependencies
+python-Levenshtein==0.27.1
+Levenshtein==0.27.1
+RapidFuzz==3.14.1
+
+# Additional dependencies
+click==8.3.0
+joblib==1.5.2
+threadpoolctl==3.6.0
