@@ -30,11 +30,6 @@ scores/
 # Language model data (large)
 data_lm/
 
-# Development/testing scripts
-quick_eval_test.py
-view_results.py
-compare_predictions.py
-
 # Documentation that might be copyrighted
 *.pdf
 
