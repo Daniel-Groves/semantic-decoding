@@ -29,29 +29,29 @@ if __name__ == "__main__":
     if args.experiment in ["imagined_speech", "perceived_movies"]: word_rate_voxels = "speech"
     else: word_rate_voxels = "auditory"
     
-    print(f"🧠 Decoding experiment: {args.experiment}")
-    print(f"📝 Task: {args.task}")
-    print(f"👤 Subject: {args.subject}")
-    print(f"🤖 Using GPT checkpoint: {gpt_checkpoint}")
-    print(f"🎯 Using word rate model: {word_rate_voxels}")
+    print(f"Decoding experiment: {args.experiment}")
+    print(f"Task: {args.task}")
+    print(f"Subject: {args.subject}")
+    print(f"Using GPT checkpoint: {gpt_checkpoint}")
+    print(f"Using word rate model: {word_rate_voxels}")
 
     # load responses
     response_path = os.path.join(config.DATA_TEST_DIR, "test_response", args.subject, args.experiment, args.task + ".hf5")
-    print(f"📊 Loading brain responses from: {response_path}")
+    print(f"Loading brain responses from: {response_path}")
     hf = h5py.File(response_path, "r")
     resp = np.nan_to_num(hf["data"][:])
     hf.close()
-    print(f"🧠 Response data shape: {resp.shape}")
+    print(f"Response data shape: {resp.shape}")
     
     # Limit data for testing if specified
     if args.limit is not None:
         original_shape = resp.shape
         resp = resp[:args.limit]
-        print(f"⚡ LIMITED to first {args.limit} time points for testing (was {original_shape[0]} points)")
-        print(f"🧠 New response data shape: {resp.shape}")
+        print(f"LIMITED to first {args.limit} time points for testing (was {original_shape[0]} points)")
+        print(f"New response data shape: {resp.shape}")
 
     # load gpt
-    print("🤖 Loading GPT models...")
+    print("Loading GPT models...")
     with open(os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "vocab.json"), "r") as f:
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
@@ -59,10 +59,10 @@ if __name__ == "__main__":
     gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
     lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
-    print("✅ GPT and language models loaded")
+    print("GPT and language models loaded")
 
     # load models
-    print("📁 Loading trained models...")
+    print("Loading trained models...")
     load_location = os.path.join(config.MODEL_DIR, args.subject)
     word_rate_model = np.load(os.path.join(load_location, "word_rate_model_%s.npz" % word_rate_voxels), allow_pickle = True)
     encoding_model = np.load(os.path.join(load_location, "encoding_model_%s.npz" % gpt_checkpoint))
@@ -73,22 +73,22 @@ if __name__ == "__main__":
     em = EncodingModel(resp, weights, encoding_model["voxels"], noise_model, device = config.EM_DEVICE)
     em.set_shrinkage(config.NM_ALPHA)
     assert args.task not in encoding_model["stories"]
-    print(f"✅ Encoding model loaded ({len(encoding_model['voxels'])} voxels)")
+    print(f"Encoding model loaded ({len(encoding_model['voxels'])} voxels)")
     
     # predict word times
-    print("⏰ Predicting word timing from brain activity...")
+    print("Predicting word timing from brain activity...")
     word_rate = predict_word_rate(resp, word_rate_model["weights"], word_rate_model["voxels"], word_rate_model["mean_rate"])
     if args.experiment == "perceived_speech": word_times, tr_times = predict_word_times(word_rate, resp, starttime = -10)
     else: word_times, tr_times = predict_word_times(word_rate, resp, starttime = 0)
     lanczos_mat = get_lanczos_mat(word_times, tr_times)
-    print(f"📅 Predicted {len(word_times)} word times")
+    print(f"Predicted {len(word_times)} word times")
 
     # decode responses
-    print("🔍 Starting decoding process...")
+    print("Starting decoding process...")
     decoder = Decoder(word_times, config.WIDTH)
     sm = StimulusModel(lanczos_mat, tr_stats, word_stats[0], device = config.SM_DEVICE)
     
-    print(f"🔄 Processing {len(word_times)} time points...")
+    print(f"Processing {len(word_times)} time points...")
     for sample_index in range(len(word_times)):
         if sample_index % 50 == 0:  # Progress every 50 samples
             print(f"  Progress: {sample_index+1}/{len(word_times)} ({100*(sample_index+1)/len(word_times):.1f}%)")
@@ -107,11 +107,11 @@ if __name__ == "__main__":
             decoder.add_extensions(local_extensions, likelihoods, nextensions)
         decoder.extend(verbose = False)
     
-    print("✅ Decoding completed!")
+    print("Decoding completed!")
         
     if args.experiment in ["perceived_movie", "perceived_multispeaker"]: decoder.word_times += 10
     save_location = os.path.join(config.RESULT_DIR, args.subject, args.experiment)
     os.makedirs(save_location, exist_ok = True)
     decoder.save(os.path.join(save_location, args.task))
-    print(f"💾 Results saved to: {save_location}/{args.task}")
-    print("🎉 Decoding complete! Check the results file for the reconstructed text.")
+    print(f"Results saved to: {save_location}/{args.task}")
+    print("Decoding complete! Check the results file for the reconstructed text.")

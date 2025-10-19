@@ -31,20 +31,20 @@ pip install datalad
 #### Clone the datasets
 ```bash
 # Training dataset (ds003020)
-datalad clone https://github.com/OpenNeuroDatasets/ds003020.git data_train_raw
+git clone https://github.com/OpenNeuroDatasets/ds003020.git data_train_raw
 
 # Test dataset (ds004510)  
-datalad clone https://github.com/OpenNeuroDatasets/ds004510.git data_test_raw
+git clone https://github.com/OpenNeuroDatasets/ds004510.git data_test_raw
 ```
 
 #### Get the data files
 ```bash
 # Get training data
 cd data_train_raw
-datalad get derivative/preprocessed_data/
+datalad get derivative/preprocessed_data/ # this is huge amounts of data probs dont do all stories or all subjects
 datalad get derivative/TextGrids/
-datalad get derivative/respdict.json
-datalad get derivative/sess_to_story.json
+# datalad get derivative/respdict.json
+# datalad get derivative/sess_to_story.json
 
 # Get test data
 cd ../data_test_raw
@@ -108,11 +108,11 @@ New-Item -ItemType Directory -Force -Path "data_test\test_response\S1\perceived_
 
 # Copy training data
 Copy-Item "..\data_train_raw\derivative\TextGrids\*.TextGrid" "data_train\train_stimulus\"
-Copy-Item "..\data_train_raw\derivative\preprocessed_data\S1\*.hf5" "data_train\train_response\S1\"
-Copy-Item "..\data_train_raw\derivative\preprocessed_data\S2\*.hf5" "data_train\train_response\S2\"
-Copy-Item "..\data_train_raw\derivative\preprocessed_data\S3\*.hf5" "data_train\train_response\S3\"
-Copy-Item "..\data_train_raw\derivative\sess_to_story.json" "data_train\"
-Copy-Item "..\data_train_raw\derivative\respdict.json" "data_train\"
+Copy-Item "..\data_train_raw\derivative\preprocessed_data\UTS01\*.hf5" "data_train\train_response\S1\"
+Copy-Item "..\data_train_raw\derivative\preprocessed_data\UTS02\*.hf5" "data_train\train_response\S2\"
+Copy-Item "..\data_train_raw\derivative\preprocessed_data\UTS03\*.hf5" "data_train\train_response\S3\"
+# Copy-Item "..\data_train_raw\derivative\sess_to_story.json" "data_train\"
+# Copy-Item "..\data_train_raw\derivative\respdict.json" "data_train\"
 
 # Copy test data
 Copy-Item "..\data_test_raw\derivative\TextGrids\imagined_speech\*.TextGrid" "data_test\test_stimulus\imagined_speech\"
@@ -131,7 +131,7 @@ Copy-Item "..\data_test_raw\derivative\preprocessed_data\UTS01\perceived_speech\
 1. **Train Encoding Models**: `python3 decoding/train_EM.py --subject S1 --gpt perceived`
 2. **Train Word Rate Models**: `python3 decoding/train_WR.py --subject S1` 
 3. **Run Decoder**: `python3 decoding/run_decoder.py --subject S1 --experiment perceived_movie --task laluna`
-4. **Evaluate Results**: `python3 decoding/evaluate_predictions.py --subject S1 --experiment perceived_movie --task laluna --metrics WER`
+4. **Evaluate Results**: `python3 decoding/evaluate_predictions.py --subject S1 --experiment perceived_movie --task laluna`
 
 ## Viewing Results
 

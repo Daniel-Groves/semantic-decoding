@@ -95,7 +95,10 @@ class BLEU(object):
         
     def score(self, ref, pred):
         results = []
-        for r, p in zip(ref, pred):
+        # Convert to strings like METEOR does
+        ref_strings = [" ".join([str(w) for w in x]) for x in ref]
+        pred_strings = [" ".join([str(w) for w in x]) for x in pred]
+        for r, p in zip(ref_strings, pred_strings):
             self.metric.add_batch(predictions=[p], references=[[r]])
             results.append(self.metric.compute(max_order = self.n)["bleu"])
         return np.array(results)
@@ -109,10 +112,11 @@ class METEOR(object):
 
     def score(self, ref, pred):
         results = []
-        ref_strings = [" ".join(x) for x in ref]
-        pred_strings = [" ".join(x) for x in pred]
+        # Convert numpy strings to regular Python strings
+        ref_strings = [" ".join([str(w) for w in x]) for x in ref]
+        pred_strings = [" ".join([str(w) for w in x]) for x in pred]
         for r, p in zip(ref_strings, pred_strings):
-            self.metric.add_batch(predictions=[p], references=[r])
+            self.metric.add_batch(predictions=[p], references=[[r]])
             results.append(self.metric.compute()["meteor"])
         return np.array(results)
         
@@ -127,6 +131,7 @@ class BERTSCORE(object):
         else: self.score_id = 2
 
     def score(self, ref, pred):
-        ref_strings = [" ".join(x) for x in ref]
-        pred_strings = [" ".join(x) for x in pred]
+        # Convert numpy strings to regular Python strings
+        ref_strings = [" ".join([str(w) for w in x]) for x in ref]
+        pred_strings = [" ".join([str(w) for w in x]) for x in pred]
         return self.metric.score(cands = pred_strings, refs = ref_strings)[self.score_id].numpy()

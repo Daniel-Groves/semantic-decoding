@@ -259,6 +259,10 @@ def bootstrap_ridge(Rstim, Rresp, alphas, nboots, chunklen, nchunks, dtype=np.si
     valinds : array_like, shape (TH, B)
         The indices of the training data that were used as "validation" for each bootstrap sample.
     """
+    # Convert to float32 to save memory
+    Rstim = Rstim.astype(np.float32)
+    Rresp = Rresp.astype(np.float32)
+    
     nresp, nvox = Rresp.shape
     bestalphas = np.zeros((nboots, nvox))  ## Will hold the best alphas for each voxel
     valinds = [] ## Will hold the indices into the validation data for each bootstrap
@@ -327,8 +331,8 @@ def bootstrap_ridge(Rstim, Rresp, alphas, nboots, chunklen, nchunks, dtype=np.si
         logger.info("Best alpha = %0.3f"%bestalpha)
 
     logger.info("Computing weights for each response using entire training set..")
-    UR = np.dot(U.T, np.nan_to_num(Rresp))
-    wt = np.zeros((Rstim.shape[1], Rresp.shape[1]))
+    UR = np.dot(U.T, np.nan_to_num(Rresp)).astype(np.float32)
+    wt = np.zeros((Rstim.shape[1], Rresp.shape[1]), dtype=np.float32)
     for ai,alpha in enumerate(nalphas):
         selvox = np.nonzero(valphas==alpha)[0]
         awt = reduce(np.dot, [Vh.T, np.diag(S/(S**2+alpha**2)), UR[:,selvox]])
