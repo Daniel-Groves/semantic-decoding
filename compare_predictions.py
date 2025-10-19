@@ -3,7 +3,11 @@
 import numpy as np
 import sys
 import os
-sys.path.append('/Users/danielgroves/GitRepos/semantic-decoding/decoding')
+import argparse
+
+# Add decoding directory to path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(script_dir, 'decoding'))
 
 from utils_eval import load_transcript
 
@@ -75,10 +79,15 @@ def compare_predictions(subject, experiment, task):
     print(f"Vocabulary overlap: {overlap / len(ref_set):.1%}")
 
 if __name__ == "__main__":
-    if len(sys.argv) == 4:
-        subject, experiment, task = sys.argv[1], sys.argv[2], sys.argv[3]
-    else:
-        # Default to our laluna results
-        subject, experiment, task = "S1", "perceived_movie", "laluna"
+    parser = argparse.ArgumentParser(description='Compare decoder predictions with reference transcript')
+    parser.add_argument('--subject', type=str, default='S1',
+                        help='Subject ID (default: S1)')
+    parser.add_argument('--experiment', type=str, default='perceived_movie',
+                        choices=['perceived_movie', 'perceived_speech', 'perceived_multispeaker', 'imagined_speech'],
+                        help='Experiment type (default: perceived_movie)')
+    parser.add_argument('--task', type=str, default='laluna',
+                        help='Task name (default: laluna)')
     
-    compare_predictions(subject, experiment, task)
+    args = parser.parse_args()
+    
+    compare_predictions(args.subject, args.experiment, args.task)

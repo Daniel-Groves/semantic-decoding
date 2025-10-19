@@ -9,7 +9,13 @@ scikit-learn==1.7.2
 matplotlib==3.10.6
 
 # Deep learning and transformers
-torch==2.8.0
+# PyTorch: MUST be >= 2.6 for transformers 4.57.0 security requirements
+# Install with GPU support (CUDA 12.4) using:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# Or for CPU only (if torch 2.6+ is available):
+#   pip install torch>=2.6.0 torchvision torchaudio
+# Note: Do NOT use requirements.txt directly for torch if you want GPU support
+torch>=2.6.0  # Minimum version required by transformers 4.57.0
 transformers==4.57.0
 tokenizers==0.22.1
 safetensors==0.6.2
