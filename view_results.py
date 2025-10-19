@@ -3,6 +3,7 @@
 import numpy as np
 import sys
 import os
+import argparse
 
 def display_results(npz_file):
     """Display evaluation results in a human-readable format"""
@@ -88,10 +89,22 @@ def display_results(npz_file):
     print("- Z-score > 2 indicates statistical significance")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        npz_file = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Display semantic decoding evaluation results')
+    parser.add_argument('--subject', type=str, default='S1', 
+                        help='Subject ID (default: S1)')
+    parser.add_argument('--experiment', type=str, default='perceived_movie',
+                        choices=['perceived_movie', 'perceived_speech', 'perceived_multispeaker', 'imagined_speech'],
+                        help='Experiment type (default: perceived_movie)')
+    parser.add_argument('--task', type=str, default='laluna',
+                        help='Task name (default: laluna)')
+    parser.add_argument('--file', type=str, default=None,
+                        help='Direct path to .npz file (overrides other options)')
+    
+    args = parser.parse_args()
+    
+    if args.file:
+        npz_file = args.file
     else:
-        # Default to the laluna results
-        npz_file = "scores/S1/perceived_movie/laluna.npz"
+        npz_file = f"scores/{args.subject}/{args.experiment}/{args.task}.npz"
     
     display_results(npz_file)

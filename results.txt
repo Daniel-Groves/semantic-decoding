@@ -1,0 +1,202 @@
+6 stories
+
+Loading results from: scores/S1/perceived_movie/laluna.npz
+============================================================
+Available data keys: ['window_scores', 'window_zscores', 'story_scores', 'story_zscores']
+
+SEMANTIC DECODING EVALUATION RESULTS
+============================================================
+
+Reference Task: laluna
+Metric: WER
+----------------------------------------
+Story-level performance:
+  Score: -0.0055
+  Z-score: 3.0943
+
+Window-level performance (331 windows):
+  Mean score: -0.0055 ± 0.0801
+  Mean Z-score: 0.6822 ± 1.5597
+
+Interpretation:
+  Word accuracy: -0.5%
+  Word error rate: 100.5%
+  ✓ Significantly better than chance (Z > 2)
+
+
+Reference Task: laluna
+Metric: BLEU
+----------------------------------------
+Story-level performance:
+  Score: 0.1535
+  Z-score: 3.2712
+
+Window-level performance (331 windows):
+  Mean score: 0.1535 ± 0.0403
+  Mean Z-score: 0.7328 ± 1.4353
+
+Interpretation:
+
+
+Reference Task: laluna
+Metric: METEOR
+----------------------------------------
+Story-level performance:
+  Score: 0.1035
+  Z-score: 2.5053
+
+Window-level performance (331 windows):
+  Mean score: 0.1035 ± 0.0269
+  Mean Z-score: 0.6521 ± 1.2753
+
+Interpretation:
+
+
+Reference Task: laluna
+Metric: BERT
+----------------------------------------
+Story-level performance:
+  Score: 0.7889
+  Z-score: 4.1432
+
+Window-level performance (331 windows):
+  Mean score: 0.7889 ± 0.0103
+  Mean Z-score: 1.0241 ± 1.3429
+
+Interpretation:
+
+============================================================
+Notes:
+- Scores are computed over sliding time windows
+- Z-scores compare performance to null/random baselines
+- Higher scores indicate better reconstruction
+- Z-score > 2 indicates statistical significance
+
+COMPARISON: LALUNA
+============================================================
+Predicted words: 903
+Reference words: 978
+Time range - Predicted: 10.2s to 359.8s
+Time range - Reference: 1.3s to 367.9s
+
+SAMPLE COMPARISON (first 50 words):
+----------------------------------------
+PREDICTED:
+they are very nice and friendly the only time they see me is when i go to church i get a little weird as if they are asking if i am good for anything that they think i'm bad for because they have seen me go down a path and
+
+REFERENCE:
+now over calm waters stars twinkle in the night sky a rowboat glides into view bearing the name la luna as a burly man with a thick brown mustache works the oars a little boy peeks over the side of the small wooden craft an old man with a long
+
+SAMPLE COMPARISON (last 20 words):
+----------------------------------------
+PREDICTED:
+his room while we were living together in my mind i had already lost a loved one and i felt
+
+REFERENCE:
+relax we glimpse the trio's rowboat from a distance in the starry sky above them we find a crescent moon
+
+VOCABULARY ANALYSIS:
+----------------------------------------
+Unique words in predictions: 327
+Unique words in reference: 342
+Overlapping words: 61
+Words only in predictions: 266
+Words only in reference: 281
+Vocabulary overlap: 17.8%
+
+
+23 stories
+
+Loading results from: scores/S1/perceived_movie/laluna.npz
+============================================================
+Available data keys: ['window_scores', 'window_zscores', 'story_scores', 'story_zscores']
+
+SEMANTIC DECODING EVALUATION RESULTS
+============================================================
+
+Reference Task: laluna
+Metric: WER
+----------------------------------------
+Story-level performance:
+  Score: -0.0411
+  Z-score: 0.0091
+
+Window-level performance (331 windows):
+  Mean score: -0.0411 ± 0.1026
+  Mean Z-score: -0.0641 ± 1.1546
+
+Interpretation:
+  Word accuracy: -4.1%
+  Word error rate: 104.1%
+  + Better than chance
+
+
+Reference Task: laluna
+Metric: BLEU
+----------------------------------------
+Story-level performance:
+  Score: 0.1461
+  Z-score: 2.2992
+
+Window-level performance (331 windows):
+  Mean score: 0.1461 ± 0.0458
+  Mean Z-score: 0.7256 ± 1.5006
+
+Interpretation:
+
+
+Reference Task: laluna
+Metric: METEOR
+----------------------------------------
+Story-level performance:
+  Score: 0.1068
+  Z-score: 2.6813
+
+Window-level performance (331 windows):
+  Mean score: 0.1068 ± 0.0285
+  Mean Z-score: 0.8478 ± 1.3972
+
+Interpretation:
+
+
+Reference Task: laluna
+Metric: BERT
+----------------------------------------
+Story-level performance:
+  Score: 0.7905
+  Z-score: 4.6896
+
+Window-level performance (331 windows):
+  Mean score: 0.7905 ± 0.0104
+  Mean Z-score: 1.1163 ± 1.3421
+
+Interpretation:
+
+============================================================
+Notes:
+- Scores are computed over sliding time windows
+- Z-scores compare performance to null/random baselines
+- Higher scores indicate better reconstruction
+- Z-score > 2 indicates statistical significance
+
+(.venv) PS D:\semantic-decoding> python decoding/train_EM.py --subject S1 --gpt perceived
+D:\semantic-decoding\.venv\Lib\site-packages\torch\__init__.py:1236: UserWarning: torch.set_default_tensor_type() is deprecated as of PyTorch 2.1, please use torch.set_default_dtype() and torch.set_default_device() as alternatives. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\torch\csrc\tensor\python_tensor.cpp:436.)
+  _C._set_default_tensor_type(t)
+Warning: tables not available, using h5py fallback
+Loaded 41 training stories from 8 sessions
+Stories: alternateithicatom, souls, avatar, legacy, odetostepfather...
+Loading GPT model...
+GPT model loaded (layer 9, 5 context words)
+Getting stimulus features...
+Getting brain responses for subject S1...
+Data shapes: stimulus (14701, 3072), response (14701, 81126)
+Running bootstrap ridge regression (50 boots, 74 chunks, 10 alphas)...
+Traceback (most recent call last):
+  File "D:\semantic-decoding\decoding\train_EM.py", line 49, in <module>
+    weights, alphas, bscorrs = bootstrap_ridge(rstim, rresp, use_corr = False, alphas = config.ALPHAS,
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\semantic-decoding\decoding\utils_ridge\ridge.py", line 330, in bootstrap_ridge
+    UR = np.dot(U.T, np.nan_to_num(Rresp))
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 8.89 GiB for an array with shape (14701, 81126) and data type float64
+

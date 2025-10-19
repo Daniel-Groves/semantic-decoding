@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--gpt", type = str, default = "perceived")
     parser.add_argument("--sessions", nargs = "+", type = int, 
-        default = [2, 5, 11, 14])  # Only sessions with available stories
+        default = [2, 3, 4, 5, 6, 7, 8, 9])  # All available sessions (82 stories)
     args = parser.parse_args()
 
     # training stories
