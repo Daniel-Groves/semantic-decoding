@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--sessions", nargs = "+", type = int, 
-        default = [2, 3, 4, 5, 6, 7, 8, 9])  # Only sessions with available stories CHANGED
+            default = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20])  # Only sessions with available stories
     args = parser.parse_args()
 
     # training stories
