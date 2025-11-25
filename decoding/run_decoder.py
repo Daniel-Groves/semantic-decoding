@@ -52,13 +52,11 @@ if __name__ == "__main__":
 
     # load gpt
     print("Loading GPT models...")
-    with open(os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "vocab.json"), "r") as f:
-        gpt_vocab = json.load(f)
-    with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
-        decoder_vocab = json.load(f)
-    gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
+
+
+    gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
-    lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
+    lm = LanguageModel(gpt, gpt.vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
     print("GPT and language models loaded")
 
     # load models

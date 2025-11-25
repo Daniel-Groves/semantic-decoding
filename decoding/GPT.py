@@ -1,22 +1,27 @@
 import torch
 import numpy as np
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from torch.nn.functional import softmax
 
 class GPT():    
-    """wrapper for https://huggingface.co/openai-gpt
-    """
-    def __init__(self, path, vocab, device = 'cpu'): 
+    """wrapper for HuggingFace Causal LMs"""
+    def __init__(self, model_name, device = 'cpu'): 
         self.device = device
-        self.model = AutoModelForCausalLM.from_pretrained(path).eval().to(self.device)
-        self.vocab = vocab
-        self.word2id = {w : i for i, w in enumerate(self.vocab)}
-        self.UNK_ID = self.word2id['<unk>']
+
+        # Load model and tokenizer from HuggingFace
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(model_name).eval().to(self.device)
+
+        # set vocab based on tokenzier
+        vocab_dict = self.tokenizer.get_vocab()
+        self.vocab = [k for k, v in sorted(vocab_dict.items(), key=lambda item: item[1])]
+        self.word2id = self.tokenizer.get_vocab()
+        self.UNK_ID = self.tokenizer.unk_token_id if self.tokenizer.unk_token_id is not None else self.tokenizer.eos_token_id
 
     def encode(self, words):
-        """map from words to ids
+        """map from words to ids using the tokenizer
         """
-        return [self.word2id[x] if x in self.word2id else self.UNK_ID for x in words]
+        return [self.tokenizer.encode(" " + x, add_special_tokens=False)[0] for x in words]
         
     def get_story_array(self, words, context_words):
         """get word ids for each phrase in a stimulus story
