@@ -31,9 +31,9 @@ if __name__ == "__main__":
 
     # load gpt
     print("Loading GPT model...")
-    with open(os.path.join(config.DATA_LM_DIR, args.gpt, "vocab.json"), "r") as f:
-        gpt_vocab = json.load(f)
-    gpt = GPT(path = os.path.join(config.DATA_LM_DIR, args.gpt, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
+    # with open(os.path.join(config.DATA_LM_DIR, args.gpt, "vocab.json"), "r") as f:
+    #     gpt_vocab = json.load(f)
+    gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
     print(f"GPT model loaded (layer {config.GPT_LAYER}, {config.GPT_WORDS} context words)")
     
