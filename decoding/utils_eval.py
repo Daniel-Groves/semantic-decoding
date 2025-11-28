@@ -47,8 +47,11 @@ def generate_null(pred_times, gpt_checkpoint, n):
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
         decoder_vocab = json.load(f)
-    gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
-    lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
+
+    gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
+    lm = LanguageModel(gpt, gpt.vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
+    # gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
+    # lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
     
     # generate null sequences
     null_words = []
