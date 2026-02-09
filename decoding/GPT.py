@@ -21,7 +21,18 @@ class GPT():
     def encode(self, words):
         """map from words to ids using the tokenizer
         """
-        return [self.tokenizer.encode(" " + x, add_special_tokens=False)[0] for x in words]
+        if not words:
+            return [self.tokenizer.eos_token_id]
+
+        encoded = []
+        for x in words:
+            tokens = self.tokenizer.encode(" " + x, add_special_tokens=False)
+            if tokens:
+                encoded.append(tokens[0])
+            else:
+                encoded.append(self.UNK_ID)
+
+        return encoded if encoded else [self.tokenizer.eos_token_id]
         
     def get_story_array(self, words, context_words):
         """get word ids for each phrase in a stimulus story
@@ -37,7 +48,20 @@ class GPT():
     def get_context_array(self, contexts):
         """get word ids for each context
         """
-        context_array = np.array([self.encode(words) for words in contexts])
+        if not contexts:
+            return torch.tensor([[self.tokenizer.eos_token_id]]).long()
+
+        encoded_contexts = [self.encode(ctx) for ctx in contexts]
+        clean_contexts = [ctx if ctx else [self.tokenizer.eos_token_id] for ctx in encoded_contexts]
+
+        max_len = max(len(ctx) for ctx in clean_contexts)
+        if max_len == 0:
+            return torch.tensor([[self.tokenizer.eos_token_id]]).long()
+
+        pad_id = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.UNK_ID
+        padded_contexts = [ctx + [pad_id] * (max_len - len(ctx)) for ctx in clean_contexts]
+
+        context_array = np.array(padded_contexts)
         return torch.tensor(context_array).long()
 
     def get_hidden(self, ids, layer):

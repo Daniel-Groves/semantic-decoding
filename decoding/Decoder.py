@@ -13,10 +13,11 @@ class Decoder(object):
     def first_difference(self):
         """get first index where hypotheses on the beam differ
         """
-        words_arr = np.array([hypothesis.words for hypothesis in self.beam])
-        if words_arr.shape[0] == 1: return words_arr.shape[1]
-        for index in range(words_arr.shape[1]): 
-            if len(set(words_arr[:, index])) > 1: return index
+        words_lists = [hypothesis.words for hypothesis in self.beam]
+        if len(words_lists) == 1: return len(words_lists[0])
+        min_len = min(len(w) for w in words_lists)
+        for index in range(min_len):
+            if len(set(w[index] for w in words_lists)) > 1: return index
         return 0
     
     def time_window(self, sample_index, seconds, floor = 0):
@@ -28,6 +29,8 @@ class Decoder(object):
     def get_hypotheses(self):
         """get the number of permitted extensions for each hypothesis on the beam
         """
+        if len(self.beam) == 0:
+            return []
         if len(self.beam[0].words) == 0: 
             return zip(self.beam, [self.extensions for hypothesis in self.beam])
         logprobs = [sum(hypothesis.logprobs) for hypothesis in self.beam]
@@ -42,8 +45,10 @@ class Decoder(object):
         self.scored_extensions.extend(scored_extensions[:num_extensions])
 
     def extend(self, verbose = False):
-        """update beam based on global extension pool 
+        """update beam based on global extension pool
         """
+        if not self.scored_extensions:
+            return
         self.beam = [x[0] for x in sorted(self.scored_extensions, key = lambda x : -x[1])[:self.beam_width]]
         self.scored_extensions = []
         if verbose: print(self.beam[0].words)

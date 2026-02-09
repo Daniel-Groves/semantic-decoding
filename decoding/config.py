@@ -21,7 +21,7 @@ ALPHAS = np.logspace(1, 3, 10)
 NBOOTS = 50
 VOXELS = 10000
 CHUNKLEN = 40
-GPT_LAYER = 24
+GPT_LAYER = 36
 GPT_WORDS = 5
 
 GPT_MODEL_NAME = "gpt2-xl"
@@ -33,7 +33,7 @@ WIDTH = 200
 NM_ALPHA = 2/3
 LM_TIME = 8
 LM_MASS = 0.9
-LM_RATIO = 0.1
+LM_RATIO = 0.025  # Reduced for GPT2-XL (more confident LM needs lower threshold)
 EXTENSIONS = 5
 
 # evaluation parameters
@@ -44,6 +44,6 @@ WINDOW = 20
 
 
 # can change to "cuda" if GPU available
-GPT_DEVICE = "cpu"
-EM_DEVICE = "cpu"
-SM_DEVICE = "cpu"
+GPT_DEVICE = "cuda"
+EM_DEVICE = "cuda"
+SM_DEVICE = "cuda"

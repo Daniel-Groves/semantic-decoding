@@ -34,9 +34,22 @@ def context_filter(proposals, context):
 class LanguageModel():
     """class for generating word sequences using a language model
     """
-    def __init__(self, model, vocab, nuc_mass = 1.0, nuc_ratio = 0.0):        
+    def __init__(self, model, vocab, nuc_mass = 1.0, nuc_ratio = 0.0):
         self.model = model
-        self.ids = {i for word, i in self.model.word2id.items() if word in set(vocab)}
+        # Build mapping from GPT-2 token IDs to plain words
+        # GPT-2 uses Ġ prefix for tokens that represent words with leading space
+        self.ids = set()
+        self.id_to_word = {}  # Maps token ID -> plain English word
+        self.word_to_id = {}  # Maps plain English word -> token ID
+        vocab_set = set(vocab)
+        for token, token_id in self.model.word2id.items():
+            # Check if this is a spaced token (Ġword) that matches a vocab word
+            if token.startswith('Ġ'):
+                plain_word = token[1:]  # Remove Ġ prefix
+                if plain_word in vocab_set:
+                    self.ids.add(token_id)
+                    self.id_to_word[token_id] = plain_word
+                    self.word_to_id[plain_word] = token_id
         self.nuc_mass, self.nuc_ratio = nuc_mass, nuc_ratio
         
     def ps(self, contexts):
@@ -49,8 +62,10 @@ class LanguageModel():
     def beam_propose(self, beam, context_words):
         """get possible extension words for each hypothesis in the decoder beam
         """
-        if len(beam) == 1: 
-            nuc_words = [w for w in INIT if self.model.word2id[w] in self.ids]
+        if len(beam) == 0:
+            return []
+        if len(beam) == 1:
+            nuc_words = [w for w in INIT if w in self.word_to_id]
             nuc_logprobs = np.log(np.ones(len(nuc_words)) / len(nuc_words))
             return [(nuc_words, nuc_logprobs)]
         else:
@@ -59,8 +74,8 @@ class LanguageModel():
             beam_nucs = []
             for context, probs in zip(contexts, beam_probs):
                 nuc_ids = get_nucleus(probs, nuc_mass = self.nuc_mass, nuc_ratio = self.nuc_ratio)
-                nuc_words = [self.model.vocab[i] for i in nuc_ids if i in self.ids]
+                nuc_words = [self.id_to_word[i] for i in nuc_ids if i in self.ids]
                 nuc_words = context_filter(nuc_words, context)
-                nuc_logprobs = np.log([probs[self.model.word2id[w]] for w in nuc_words])
+                nuc_logprobs = np.log([probs[self.word_to_id[w]] for w in nuc_words])
                 beam_nucs.append((nuc_words, nuc_logprobs))
             return beam_nucs

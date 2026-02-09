@@ -59,9 +59,11 @@ class StimulusModel():
         """create stimulus features for each hypothesis
         """
         n_variants, n_feats = len(var_embs), self.blank.shape[0]
+        n_hyp_embs = len(hypothesis_embs)
         with torch.no_grad():
             full = self.blank.repeat(self.lanczos_mat.shape[1], 1) # word times x features
-            full[:sample_index] = torch.tensor(np.array(hypothesis_embs)).float().reshape(-1, n_feats).to(self.device)
+            if n_hyp_embs > 0:
+                full[:n_hyp_embs] = torch.tensor(np.array(hypothesis_embs)).float().reshape(-1, n_feats).to(self.device)
             variants = full.repeat(n_variants, 1, 1) # variants x word times x features
             variants[:, sample_index, :] = torch.tensor(np.array(var_embs)).float().to(self.device)
             tr_variants = self._normalize(self._downsample(variants))

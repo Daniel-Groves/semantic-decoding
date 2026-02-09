@@ -8,7 +8,7 @@ from Decoder import Decoder, Hypothesis
 from LanguageModel import LanguageModel
 
 from jiwer import wer
-import evaluate
+from datasets import load_metric
 from bert_score import BERTScorer
 
 BAD_WORDS_PERCEIVED_SPEECH = frozenset(["sentence_start", "sentence_end", "br", "lg", "ls", "ns", "sp"])
@@ -47,11 +47,8 @@ def generate_null(pred_times, gpt_checkpoint, n):
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
         decoder_vocab = json.load(f)
-
-    gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
-    lm = LanguageModel(gpt, gpt.vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
-    # gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
-    # lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
+    gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
+    lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
     
     # generate null sequences
     null_words = []
@@ -85,7 +82,7 @@ class WER(object):
             if len(ref_seg) == 0 : error = 1.0
             else: error = wer(ref_seg, pred_seg)
             if self.use_score: scores.append(1 - error)
-            else: scores.append(error)
+            else: use_score.append(error)
         return np.array(scores)
     
 """
@@ -93,15 +90,12 @@ BLEU (https://aclanthology.org/P02-1040.pdf)
 """
 class BLEU(object):
     def __init__(self, n = 4):
-        self.metric = evaluate.load("bleu", keep_in_memory=True)
+        self.metric = load_metric("bleu", keep_in_memory=True)
         self.n = n
         
     def score(self, ref, pred):
         results = []
-        # Convert to strings like METEOR does
-        ref_strings = [" ".join([str(w) for w in x]) for x in ref]
-        pred_strings = [" ".join([str(w) for w in x]) for x in pred]
-        for r, p in zip(ref_strings, pred_strings):
+        for r, p in zip(ref, pred):
             self.metric.add_batch(predictions=[p], references=[[r]])
             results.append(self.metric.compute(max_order = self.n)["bleu"])
         return np.array(results)
@@ -111,15 +105,14 @@ METEOR (https://aclanthology.org/W05-0909.pdf)
 """
 class METEOR(object):
     def __init__(self):
-        self.metric = evaluate.load("meteor", keep_in_memory=True)
+        self.metric = load_metric("meteor", keep_in_memory=True)
 
     def score(self, ref, pred):
         results = []
-        # Convert numpy strings to regular Python strings
-        ref_strings = [" ".join([str(w) for w in x]) for x in ref]
-        pred_strings = [" ".join([str(w) for w in x]) for x in pred]
+        ref_strings = [" ".join(x) for x in ref]
+        pred_strings = [" ".join(x) for x in pred]
         for r, p in zip(ref_strings, pred_strings):
-            self.metric.add_batch(predictions=[p], references=[[r]])
+            self.metric.add_batch(predictions=[p], references=[r])
             results.append(self.metric.compute()["meteor"])
         return np.array(results)
         
@@ -134,7 +127,6 @@ class BERTSCORE(object):
         else: self.score_id = 2
 
     def score(self, ref, pred):
-        # Convert numpy strings to regular Python strings
-        ref_strings = [" ".join([str(w) for w in x]) for x in ref]
-        pred_strings = [" ".join([str(w) for w in x]) for x in pred]
+        ref_strings = [" ".join(x) for x in ref]
+        pred_strings = [" ".join(x) for x in pred]
         return self.metric.score(cands = pred_strings, refs = ref_strings)[self.score_id].numpy()
