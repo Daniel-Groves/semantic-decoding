@@ -90,5 +90,38 @@ class LMFeatures():
         """
         context_array = self.model.get_story_array(words, self.context_words)
         embs = self.model.get_hidden(context_array, layer = self.layer)
-        return np.vstack([embs[0, :self.context_words], 
+        return np.vstack([embs[0, :self.context_words],
             embs[:context_array.shape[0] - self.context_words, self.context_words]])
+
+class MixedLMFeatures():
+    """class for extracting and concatenating features from multiple GPT layers
+    """
+    def __init__(self, model, layers, context_words):
+        self.model, self.layers, self.context_words = model, layers, context_words
+
+    def extend(self, extensions, verbose = False):
+        """outputs concatenated vectors from multiple layers for the last word of each extension
+        """
+        contexts = [extension[-(self.context_words+1):] for extension in extensions]
+        if verbose: print(contexts)
+        context_array = self.model.get_context_array(contexts)
+        last_word_idx = len(contexts[0]) - 1
+        all_layer_embs = []
+        for layer in self.layers:
+            embs = self.model.get_hidden(context_array, layer = layer)
+            all_layer_embs.append(embs[:, last_word_idx])
+        return np.hstack(all_layer_embs)
+
+    def make_stim(self, words):
+        """outputs matrix of features corresponding to the stimulus words (concatenated across layers)
+        """
+        context_array = self.model.get_story_array(words, self.context_words)
+        all_layer_embs = []
+        for layer in self.layers:
+            embs = self.model.get_hidden(context_array, layer = layer)
+            layer_stim = np.vstack([
+                embs[0, :self.context_words],
+                embs[:context_array.shape[0] - self.context_words, self.context_words]
+            ])
+            all_layer_embs.append(layer_stim)
+        return np.hstack(all_layer_embs)

@@ -8,7 +8,7 @@ from Decoder import Decoder, Hypothesis
 from LanguageModel import LanguageModel
 
 from jiwer import wer
-from datasets import load_metric
+import evaluate
 from bert_score import BERTScorer
 
 BAD_WORDS_PERCEIVED_SPEECH = frozenset(["sentence_start", "sentence_end", "br", "lg", "ls", "ns", "sp"])
@@ -47,7 +47,7 @@ def generate_null(pred_times, gpt_checkpoint, n):
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
         decoder_vocab = json.load(f)
-    gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
+    gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
     lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
     
     # generate null sequences
@@ -90,13 +90,18 @@ BLEU (https://aclanthology.org/P02-1040.pdf)
 """
 class BLEU(object):
     def __init__(self, n = 4):
-        self.metric = load_metric("bleu", keep_in_memory=True)
+        self.metric = evaluate.load("bleu", keep_in_memory=True)
         self.n = n
         
     def score(self, ref, pred):
         results = []
         for r, p in zip(ref, pred):
-            self.metric.add_batch(predictions=[p], references=[[r]])
+            if len(p) == 0 or len(r) == 0:
+                results.append(0.0)
+                continue
+            r_str = " ".join([str(w) for w in r])
+            p_str = " ".join([str(w) for w in p])
+            self.metric.add_batch(predictions=[p_str], references=[[r_str]])
             results.append(self.metric.compute(max_order = self.n)["bleu"])
         return np.array(results)
     
@@ -105,7 +110,7 @@ METEOR (https://aclanthology.org/W05-0909.pdf)
 """
 class METEOR(object):
     def __init__(self):
-        self.metric = load_metric("meteor", keep_in_memory=True)
+        self.metric = evaluate.load("meteor", keep_in_memory=True)
 
     def score(self, ref, pred):
         results = []

@@ -10,7 +10,7 @@ from GPT import GPT
 from Decoder import Decoder, Hypothesis
 from LanguageModel import LanguageModel
 from EncodingModel import EncodingModel
-from StimulusModel import StimulusModel, get_lanczos_mat, affected_trs, LMFeatures
+from StimulusModel import StimulusModel, get_lanczos_mat, affected_trs, LMFeatures, MixedLMFeatures
 from utils_stim import predict_word_rate, predict_word_times
 
 if __name__ == "__main__":
@@ -19,6 +19,8 @@ if __name__ == "__main__":
     parser.add_argument("--experiment", type = str, required = True)
     parser.add_argument("--task", type = str, required = True)
     parser.add_argument("--limit", type = int, default = None, help = "Limit to first N time points for testing")
+    parser.add_argument("--layers", nargs = "+", type = int, default = None,
+        help = "GPT layers to use (multiple = concatenated mixed features)")
     args = parser.parse_args()
     
     # determine GPT checkpoint based on experiment
@@ -57,7 +59,13 @@ if __name__ == "__main__":
         decoder_vocab = json.load(f)
 
     gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
-    features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
+    if args.layers and len(args.layers) > 1:
+        features = MixedLMFeatures(model = gpt, layers = args.layers, context_words = config.GPT_WORDS)
+        print(f"Using mixed layers {args.layers}")
+    else:
+        layer = args.layers[0] if args.layers else config.GPT_LAYER
+        features = LMFeatures(model = gpt, layer = layer, context_words = config.GPT_WORDS)
+        print(f"Using layer {layer}")
     lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
     print("GPT and language models loaded")
 

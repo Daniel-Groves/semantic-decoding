@@ -5,7 +5,7 @@ import argparse
 
 import config
 from GPT import GPT
-from StimulusModel import LMFeatures
+from StimulusModel import LMFeatures, MixedLMFeatures
 from utils_stim import get_stim
 from utils_resp import get_resp
 from utils_ridge.ridge import ridge, bootstrap_ridge
@@ -15,8 +15,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--gpt", type = str, default = "perceived")
-    parser.add_argument("--sessions", nargs = "+", type = int, 
+    parser.add_argument("--sessions", nargs = "+", type = int,
         default = [2, 3, 4, 5, 6, 7, 8, 9])  # All available sessions (82 stories)
+    parser.add_argument("--layers", nargs = "+", type = int, default = None,
+        help = "GPT layers to use (multiple = concatenated mixed features)")
     args = parser.parse_args()
 
     # training stories
@@ -31,11 +33,14 @@ if __name__ == "__main__":
 
     # load gpt
     print("Loading GPT model...")
-    # with open(os.path.join(config.DATA_LM_DIR, args.gpt, "vocab.json"), "r") as f:
-    #     gpt_vocab = json.load(f)
     gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
-    features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
-    print(f"GPT model loaded (layer {config.GPT_LAYER}, {config.GPT_WORDS} context words)")
+    if args.layers and len(args.layers) > 1:
+        features = MixedLMFeatures(model = gpt, layers = args.layers, context_words = config.GPT_WORDS)
+        print(f"GPT model loaded (mixed layers {args.layers}, {config.GPT_WORDS} context words)")
+    else:
+        layer = args.layers[0] if args.layers else config.GPT_LAYER
+        features = LMFeatures(model = gpt, layer = layer, context_words = config.GPT_WORDS)
+        print(f"GPT model loaded (layer {layer}, {config.GPT_WORDS} context words)")
     
     # estimate encoding model
     print("Getting stimulus features...")
