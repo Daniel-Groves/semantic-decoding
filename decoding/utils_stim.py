@@ -39,6 +39,27 @@ def get_stim(stories, features, tr_stats = None):
     if tr_stats is None: return del_mat, (r_mean, r_std), (word_mean, word_std)
     else: return del_mat
 
+def get_stim_targets(stories, features, tr_stats=None):
+    """Extract TR-level z-scored stimulus embeddings (NO FIR delays).
+
+    Same pipeline as get_stim() but returns before make_delayed().
+    Used as training targets for the decoding model (brain → embedding).
+    Returns: ds_mat (T, 1600), tr_stats tuple
+    """
+    word_seqs = get_story_wordseqs(stories)
+    word_vecs = {story: features.make_stim(word_seqs[story].data) for story in stories}
+    ds_vecs = {story: lanczosinterp2D(word_vecs[story], word_seqs[story].data_times,
+               word_seqs[story].tr_times) for story in stories}
+    ds_mat = np.vstack([ds_vecs[story][5+config.TRIM:-config.TRIM] for story in stories])
+    if tr_stats is None:
+        r_mean, r_std = ds_mat.mean(0), ds_mat.std(0)
+        r_std[r_std == 0] = 1
+    else:
+        r_mean, r_std = tr_stats
+    ds_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
+    if tr_stats is None: return ds_mat, (r_mean, r_std)
+    else: return ds_mat
+
 def predict_word_rate(resp, wt, vox, mean_rate):
     """predict word rate at each acquisition time
     """

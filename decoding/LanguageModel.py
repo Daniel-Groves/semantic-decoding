@@ -36,20 +36,29 @@ class LanguageModel():
     """
     def __init__(self, model, vocab, nuc_mass = 1.0, nuc_ratio = 0.0):
         self.model = model
-        # Build mapping from GPT-2 token IDs to plain words
-        # GPT-2 uses Ġ prefix for tokens that represent words with leading space
         self.ids = set()
-        self.id_to_word = {}  # Maps token ID -> plain English word
-        self.word_to_id = {}  # Maps plain English word -> token ID
+        self.id_to_word = {}
+        self.word_to_id = {}
         vocab_set = set(vocab)
+
+        # Auto-detect tokenization scheme by checking for Ġ prefix (GPT-2) or </w> suffix (GPT-1)
+        has_g_prefix = any(token.startswith('Ġ') for token in self.model.word2id)
+        has_w_suffix = any(token.endswith('</w>') for token in self.model.word2id)
+
         for token, token_id in self.model.word2id.items():
-            # Check if this is a spaced token (Ġword) that matches a vocab word
-            if token.startswith('Ġ'):
-                plain_word = token[1:]  # Remove Ġ prefix
-                if plain_word in vocab_set:
-                    self.ids.add(token_id)
-                    self.id_to_word[token_id] = plain_word
-                    self.word_to_id[plain_word] = token_id
+            plain_word = None
+            if has_g_prefix and token.startswith('Ġ'):
+                plain_word = token[1:]
+            elif has_w_suffix and token.endswith('</w>'):
+                plain_word = token[:-4]
+            elif not has_g_prefix and not has_w_suffix and token in vocab_set:
+                plain_word = token
+
+            if plain_word is not None and plain_word in vocab_set:
+                self.ids.add(token_id)
+                self.id_to_word[token_id] = plain_word
+                self.word_to_id[plain_word] = token_id
+
         self.nuc_mass, self.nuc_ratio = nuc_mass, nuc_ratio
         
     def ps(self, contexts):

@@ -17,7 +17,7 @@ SCORE_DIR = os.path.join(REPO_DIR, "scores")
 TRIM = 5
 STIM_DELAYS = [1, 2, 3, 4]
 RESP_DELAYS = [-4, -3, -2, -1]
-ALPHAS = np.logspace(1, 3, 10)
+ALPHAS = np.logspace(1, 4, 10)
 NBOOTS = 50
 VOXELS = 10000
 CHUNKLEN = 40
@@ -35,6 +35,11 @@ LM_TIME = 8
 LM_MASS = 0.9
 LM_RATIO = 0.025  # Reduced for GPT2-XL (more confident LM needs lower threshold)
 EXTENSIONS = 5
+
+# decoding model parameters (brain → embedding)
+
+DM_TOP_K = 50           # Words to propose from brain signal
+DM_LOG_FLOOR = -10.0    # LM log-prob floor for brain-proposed words
 
 # evaluation parameters
 

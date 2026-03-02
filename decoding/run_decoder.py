@@ -21,6 +21,10 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type = int, default = None, help = "Limit to first N time points for testing")
     parser.add_argument("--layers", nargs = "+", type = int, default = None,
         help = "GPT layers to use (multiple = concatenated mixed features)")
+    parser.add_argument("--lm_model", type = str, default = None,
+        help = "Separate LM model for beam search (e.g. openai-gpt). If not set, uses same model as encoding.")
+    parser.add_argument("--lm_ratio", type = float, default = None,
+        help = "Override LM_RATIO for language model nucleus sampling")
     args = parser.parse_args()
     
     # determine GPT checkpoint based on experiment
@@ -58,16 +62,26 @@ if __name__ == "__main__":
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
         decoder_vocab = json.load(f)
 
+    # Load encoding model GPT
     gpt = GPT(model_name=config.GPT_MODEL_NAME, device=config.GPT_DEVICE)
     if args.layers and len(args.layers) > 1:
         features = MixedLMFeatures(model = gpt, layers = args.layers, context_words = config.GPT_WORDS)
-        print(f"Using mixed layers {args.layers}")
+        print(f"Encoding features: mixed layers {args.layers} ({config.GPT_MODEL_NAME})")
     else:
         layer = args.layers[0] if args.layers else config.GPT_LAYER
         features = LMFeatures(model = gpt, layer = layer, context_words = config.GPT_WORDS)
-        print(f"Using layer {layer}")
-    lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
-    print("GPT and language models loaded")
+        print(f"Encoding features: layer {layer} ({config.GPT_MODEL_NAME})")
+
+    # Load language model (optionally separate from encoding model)
+    lm_ratio = args.lm_ratio if args.lm_ratio is not None else config.LM_RATIO
+    if args.lm_model:
+        lm_gpt = GPT(model_name=args.lm_model, device=config.GPT_DEVICE)
+        lm = LanguageModel(lm_gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = lm_ratio)
+        print(f"Language model: {args.lm_model} (LM_RATIO={lm_ratio})")
+    else:
+        lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = lm_ratio)
+        print(f"Language model: {config.GPT_MODEL_NAME} (LM_RATIO={lm_ratio})")
+    print(f"LM vocab matched: {len(lm.ids)} tokens")
 
     # load models
     print("Loading trained models...")
