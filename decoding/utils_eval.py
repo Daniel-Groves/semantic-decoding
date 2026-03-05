@@ -99,6 +99,9 @@ class BLEU(object):
         ref_strings = [" ".join([str(w) for w in x]) for x in ref]
         pred_strings = [" ".join([str(w) for w in x]) for x in pred]
         for r, p in zip(ref_strings, pred_strings):
+            if not p.strip() or not r.strip():
+                results.append(0.0)
+                continue
             self.metric.add_batch(predictions=[p], references=[[r]])
             results.append(self.metric.compute(max_order = self.n)["bleu"])
         return np.array(results)

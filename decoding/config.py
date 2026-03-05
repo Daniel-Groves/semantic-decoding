@@ -34,6 +34,15 @@ LM_MASS = 0.9
 LM_RATIO = 0.1
 EXTENSIONS = 5
 
+# MCTS decoder parameters
+
+MCTS_WIDTH = 20
+MCTS_SIMULATIONS = 60
+MCTS_DEPTH = 3
+MCTS_CPUCT = 2.5
+MCTS_GAMMA = 0.7
+MCTS_VALUE_BLEND = 0.0
+
 # evaluation parameters
 
 WINDOW = 20
