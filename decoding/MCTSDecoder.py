@@ -1,4 +1,5 @@
 import math
+import os
 import numpy as np
 from Decoder import Hypothesis
 from LanguageModel import get_nucleus, context_filter, INIT
@@ -23,49 +24,49 @@ class MCTSNode:
         self.total_value = 0.0
         self.expanded = False
 
-    @property
     def q_value(self):
         if self.visit_count == 0:
             return 0.0
         return self.total_value / self.visit_count
 
     def puct_score(self, c_puct):
-        """PUCT selection score: Q + exploration bonus."""
+        # Calculate PUCT score
         parent_visits = self.parent.visit_count if self.parent else 1
-        exploration = c_puct * self.prior * math.sqrt(parent_visits) / (1 + self.visit_count)
-        return self.q_value + exploration
+        exploration = c_puct * self.prior * (math.sqrt(parent_visits) / (1 + self.visit_count))
+        return self.q_value() + exploration
 
     def best_child(self, c_puct):
-        """Select child with highest PUCT score."""
+        # Select child with best PUCT score
         return max(self.children, key=lambda c: c.puct_score(c_puct))
 
     def backpropagate(self, value):
-        """Update visit count and total value up to the root."""
+        # Update visit count and total value up to the root
         node = self
-        while node is not None:
+        while node:
             node.visit_count += 1
             node.total_value += value
             node = node.parent
 
     def most_visited_child(self):
-        """Return the child with the most visits (robust selection)."""
+        # N.B. this is currently unused but could be used for robust child implementation
+        # instead of best child
         return max(self.children, key=lambda c: c.visit_count)
 
     def word_trace(self):
-        """Trace words from root to this node (excluding root)."""
+        # Trace words from root to this node
         words = []
         n = self
-        while n.parent is not None:
+        while n.parent:
             words.append(n.word)
             n = n.parent
         words.reverse()
         return words
 
     def emb_trace(self):
-        """Trace embeddings from root to this node (excluding root)."""
+        # Trace embeddings from root to this node
         embs = []
         n = self
-        while n.parent is not None:
+        while n.parent:
             embs.append(n.emb)
             n = n.parent
         embs.reverse()
@@ -80,50 +81,54 @@ class MCTSDecoder:
     """
 
     def __init__(self, word_times, beam_width, simulations, max_depth,
-                 c_puct, gamma, value_blend=0.0, extensions=5):
+                 c_puct, gamma):
         self.word_times = word_times
         self.beam_width = beam_width
         self.simulations = simulations
         self.max_depth = max_depth
         self.c_puct = c_puct
         self.gamma = gamma
-        self.value_blend = value_blend
-        self.extensions = extensions
         self.beam = [Hypothesis()]
         # LM distribution + embedding cache keyed by context tuple
         self._lm_cache = {}
 
     def first_difference(self):
-        """Get first index where hypotheses on the beam differ."""
+        # Find first index where hypotheses on the beam differ (as there is no point scoring when all hypotheses are the same)
+
+        # creates array where each row is a hypothesis' word list
         words_arr = np.array([h.words for h in self.beam])
         if words_arr.shape[0] == 1:
             return words_arr.shape[1]
+
+        # loops through columns until a difference is found
         for index in range(words_arr.shape[1]):
             if len(set(words_arr[:, index])) > 1:
                 return index
         return 0
 
     def time_window(self, sample_index, seconds, floor=0):
-        """Number of prior words within [seconds] of the currently sampled time point."""
+        # Finds number of previous words within "seconds" of the current time point
+        # (used to set the context length)
         window = [t for t in self.word_times if t < self.word_times[sample_index]
                   and t > self.word_times[sample_index] - seconds]
         return max(len(window), floor)
 
     def _get_lm_candidates(self, context_words, lm, features):
-        """Get nucleus-filtered LM candidates for a context. Results are cached.
-
-        Returns (words, logprobs, embs) where embs are GPT hidden states.
-        """
+        # Get nucleus-filtered LM candidates for a context and cache results
+        # Returns (words, logprobs, embs) where embs are GPT hidden states.
         context_key = tuple(context_words)
 
+        # check cache
         if context_key in self._lm_cache:
             return self._lm_cache[context_key]
 
-        # Get LM probabilities
+        # Get LM probabilities for next word
         probs = lm.ps([context_words])
         probs = probs[0]  # single context
 
-        # Nucleus filtering
+        # Nucleus filtering (only keep words whose prob is >= nuc_ratio * max_prob 
+        # until cumulative mass >= nuc mass)
+        # and filter to words in decoder vocab
         nuc_ids = get_nucleus(probs, nuc_mass=lm.nuc_mass, nuc_ratio=lm.nuc_ratio)
         nuc_words = [lm.model.vocab[i] for i in nuc_ids if i in lm.ids]
 
@@ -172,20 +177,16 @@ class MCTSDecoder:
         all_words = hyp.words + rollout_words
 
         if len(all_words) == 0:
-            # First word position — compute embeddings same as beam search
             words, logprobs, priors = self._get_init_candidates(lm)
             extend_words = [[w] for w in words]
             embs = list(features.extend(extend_words))
-            for w, lp, emb, pr in zip(words, logprobs, embs, priors):
-                child = MCTSNode(word=w, logprob=lp, emb=emb, prior=pr, parent=node)
-                node.children.append(child)
         else:
             context = all_words[-context_words_count:]
             words, logprobs, embs, priors = self._get_lm_candidates(context, lm, features)
 
-            for w, lp, emb, pr in zip(words, logprobs, embs, priors):
-                child = MCTSNode(word=w, logprob=lp, emb=emb, prior=pr, parent=node)
-                node.children.append(child)
+        for w, lp, emb, pr in zip(words, logprobs, embs, priors):
+            child = MCTSNode(word=w, logprob=lp, emb=emb, prior=pr, parent=node)
+            node.children.append(child)
 
         node.expanded = True
 
@@ -256,8 +257,18 @@ class MCTSDecoder:
             stim = sm.make_variants(future_index, history_embs, var_emb, trs)
             likelihood = em.prs(stim, trs)[0]
 
-            # Gamma-discounted value
-            discount = self.gamma ** i
+            # Discounted value (scheme set via MCTS_DISCOUNT_TYPE env var)
+            discount_type = os.environ.get("MCTS_DISCOUNT_TYPE", "exponential")
+            if discount_type == "uniform":
+                discount = 1.0
+            elif discount_type == "linear":
+                # gamma encodes minimum weight; linearly interpolate 1.0 -> gamma
+                discount = 1.0 - i * (1.0 - self.gamma) / max(self.max_depth - 1, 1)
+            elif discount_type == "inverse":
+                # gamma > 1.0; later positions weighted more
+                discount = self.gamma ** i
+            else:  # exponential (default)
+                discount = self.gamma ** i
             total_value += discount * likelihood
 
         return total_value
@@ -309,7 +320,7 @@ class MCTSDecoder:
             if child.visit_count == 0:
                 continue
             ext_hyp = Hypothesis(parent=hyp, extension=(child.word, child.logprob, child.emb))
-            results.append((ext_hyp, child.q_value, child.visit_count))
+            results.append((ext_hyp, child.q_value(), child.visit_count))
 
         return results
 
@@ -329,27 +340,6 @@ class MCTSDecoder:
             results = self._run_mcts(hyp, sample_index, lm, features, sm, em,
                                      lanczos_mat, context_words_count)
             all_extensions.extend(results)
-
-        if len(all_extensions) == 0:
-            # No extensions found — fall back to greedy LM extension to keep
-            # hypothesis lengths in sync with sample_index
-            print(f"  WARNING: no MCTS extensions at sample_index={sample_index}, "
-                  f"falling back to greedy LM")
-            new_beam = []
-            for hyp in self.beam:
-                context = hyp.words[-context_words_count:] if hyp.words else []
-                if len(context) == 0:
-                    continue
-                words, logprobs, embs, priors = self._get_lm_candidates(
-                    context, lm, features)
-                if len(words) > 0:
-                    best = int(np.argmax(logprobs))
-                    ext = Hypothesis(parent=hyp,
-                                     extension=(words[best], logprobs[best], embs[best]))
-                    new_beam.append(ext)
-            if new_beam:
-                self.beam = new_beam[:self.beam_width]
-            return
 
         # Sort by MCTS Q-value and keep top beam_width
         all_extensions.sort(key=lambda x: -x[1])

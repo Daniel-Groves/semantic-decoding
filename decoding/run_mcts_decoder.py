@@ -26,7 +26,6 @@ if __name__ == "__main__":
     parser.add_argument("--depth", type=int, default=config.MCTS_DEPTH)
     parser.add_argument("--c_puct", type=float, default=config.MCTS_CPUCT)
     parser.add_argument("--gamma", type=float, default=config.MCTS_GAMMA)
-    parser.add_argument("--value_blend", type=float, default=config.MCTS_VALUE_BLEND)
     # Model paths
     parser.add_argument("--encoding_model", type=str, default=None,
                         help="Path to encoding model .npz (overrides default)")
@@ -49,9 +48,7 @@ if __name__ == "__main__":
     else:
         word_rate_voxels = "auditory"
 
-    print("=" * 60)
     print("MCTS DECODER")
-    print("=" * 60)
     print(f"Subject: {args.subject}")
     print(f"Experiment: {args.experiment}")
     print(f"Task: {args.task}")
@@ -59,7 +56,6 @@ if __name__ == "__main__":
     print(f"Word rate model: {word_rate_voxels}")
     print(f"MCTS params: width={args.beam_width}, sims={args.simulations}, "
           f"depth={args.depth}, c_puct={args.c_puct}, gamma={args.gamma}")
-    print("=" * 60)
 
     # load responses
     response_path = os.path.join(config.DATA_TEST_DIR, "test_response",
@@ -78,7 +74,7 @@ if __name__ == "__main__":
         print(f"New response data shape: {resp.shape}")
 
     # load gpt
-    print("Loading GPT models...")
+    print("Loading GPT models")
     with open(os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "vocab.json"), "r") as f:
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
@@ -90,16 +86,16 @@ if __name__ == "__main__":
     print("GPT and language models loaded")
 
     # load models
-    print("Loading trained models...")
+    print("Loading trained models")
     load_location = os.path.join(config.MODEL_DIR, args.subject)
     if args.word_rate_model:
         wr_path = args.word_rate_model
     else:
-        wr_path = os.path.join(load_location, "word_rate_model_%s.npz" % word_rate_voxels)
+        wr_path = os.path.join(load_location, f"word_rate_model_{word_rate_voxels}.npz")
     if args.encoding_model:
         em_path = args.encoding_model
     else:
-        em_path = os.path.join(load_location, "encoding_model_%s.npz" % gpt_checkpoint)
+        em_path = os.path.join(load_location, f"encoding_model_{gpt_checkpoint}.npz")
     print(f"Encoding model: {em_path}")
     print(f"Word rate model: {wr_path}")
     word_rate_model = np.load(wr_path, allow_pickle=True)
@@ -109,15 +105,19 @@ if __name__ == "__main__":
     em = EncodingModel(resp, weights, encoding_model["voxels"], noise_model,
                        device=config.EM_DEVICE)
     em.set_shrinkage(config.NM_ALPHA)
+
+    # check the task we are using on wasn't in training set
     assert args.task not in encoding_model["stories"]
+
     print(f"Encoding model loaded ({len(encoding_model['voxels'])} voxels, "
           f"feature_dim={encoding_model['word_stats'][0].shape[0]})")
 
     # predict word times
-    print("Predicting word timing from brain activity...")
+    print("Predicting word timing")
     word_rate = predict_word_rate(resp, word_rate_model["weights"],
                                  word_rate_model["voxels"], word_rate_model["mean_rate"])
     if args.experiment == "perceived_speech":
+        # 10 secs of scanner warmup for speech
         word_times, tr_times = predict_word_times(word_rate, resp, starttime=-10)
     else:
         word_times, tr_times = predict_word_times(word_rate, resp, starttime=0)
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     print(f"Predicted {len(word_times)} word times")
 
     # initialize MCTS decoder
-    print("Initializing MCTS decoder...")
+    print("Initializing MCTS decoder")
     decoder = MCTSDecoder(
         word_times=word_times,
         beam_width=args.beam_width,
@@ -133,29 +133,21 @@ if __name__ == "__main__":
         max_depth=args.depth,
         c_puct=args.c_puct,
         gamma=args.gamma,
-        value_blend=args.value_blend,
     )
     sm = StimulusModel(lanczos_mat, encoding_model["tr_stats"],
                        encoding_model["word_stats"][0], device=config.SM_DEVICE)
 
     # decode
     n_words = len(word_times)
-    print(f"Decoding {n_words} word positions with MCTS...")
+    print(f"Decoding {n_words} word positions with MCTS")
     t_start = time.time()
 
     for sample_index in range(n_words):
-        t_word_start = time.time()
         decoder.step(sample_index, lm, features, sm, em, lanczos_mat)
-        t_word = time.time() - t_word_start
 
         if sample_index % 10 == 0 or sample_index == n_words - 1:
-            elapsed = time.time() - t_start
-            words_per_sec = (sample_index + 1) / elapsed if elapsed > 0 else 0
-            eta = (n_words - sample_index - 1) / words_per_sec if words_per_sec > 0 else 0
             current_text = " ".join(decoder.beam[0].words[-10:]) if decoder.beam[0].words else ""
-            print(f"  [{sample_index+1}/{n_words}] {t_word:.1f}s/word | "
-                  f"elapsed {elapsed:.0f}s | ETA {eta:.0f}s | "
-                  f"beam={len(decoder.beam)} | ...{current_text}")
+            print(f"  [{sample_index+1}/{n_words}] {current_text}")
 
     total_time = time.time() - t_start
     print(f"\nDecoding completed in {total_time:.1f}s ({total_time/60:.1f}min)")
@@ -175,4 +167,3 @@ if __name__ == "__main__":
     decoded_words = decoder.beam[0].words
     print(f"\nDecoded text ({len(decoded_words)} words):")
     print(" ".join(decoded_words))
-    print("\nDone!")
