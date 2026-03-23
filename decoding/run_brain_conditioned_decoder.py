@@ -32,7 +32,7 @@ class BrainConditionedLM(LanguageModel):
         context_arr = self.model.get_context_array(contexts)
         # Expand brain context to match batch size
         brain_ctx = self._current_brain_context
-        if brain_ctx:
+        if brain_ctx is not None:
             brain_ctx = brain_ctx.expand(len(contexts), -1, -1)
         probs = self.model.get_probs(context_arr, brain_context=brain_ctx)
         return probs[:, len(contexts[0]) - 1]
