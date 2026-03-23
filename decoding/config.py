@@ -13,6 +13,9 @@ RESULT_DIR = os.path.join(REPO_DIR, "results")
 SCORE_DIR = os.path.join(REPO_DIR, "scores")
 
 # GPT encoding model parameters
+# These defaults are for GPT-1 (fine-tuned OpenAI GPT, 12 layers, 768-dim).
+# For GPT-2 XL: set GPT_LAYER = 36, LM_RATIO = 0.025,
+# ALPHAS = np.logspace(1, 4, 10), and use GPT2XL.py instead of GPT.py.
 
 TRIM = 5
 STIM_DELAYS = [1, 2, 3, 4]
