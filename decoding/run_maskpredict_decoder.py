@@ -17,6 +17,7 @@ if __name__ == "__main__":
     parser.add_argument("--subject", type=str, required=True)
     parser.add_argument("--experiment", type=str, required=True)
     parser.add_argument("--task", type=str, required=True)
+    # Initial decoded result
     parser.add_argument("--baseline", type=str, required=True,
                         help="Path to baseline .npz result file")
     # Mask-predict parameters
@@ -44,9 +45,7 @@ if __name__ == "__main__":
     else:
         gpt_checkpoint = "perceived"
 
-    print("=" * 60)
     print("MASK-PREDICT DECODER")
-    print("=" * 60)
     print(f"Subject: {args.subject}")
     print(f"Experiment: {args.experiment}")
     print(f"Task: {args.task}")
@@ -55,10 +54,9 @@ if __name__ == "__main__":
           f"alpha={args.alpha}, beta={args.beta}, top_k={args.top_k}")
     print(f"BERT model: {args.bert_model}")
     print(f"Brain scoring: {'OFF' if args.no_brain else 'ON'}")
-    print("=" * 60)
 
-    # Load baseline result
-    print("Loading baseline result...")
+    # Load baseline result which will be refined
+    print("Loading baseline result")
     baseline_data = np.load(args.baseline, allow_pickle=True)
     initial_words = list(baseline_data["words"])
     word_times = baseline_data["times"]
@@ -73,8 +71,8 @@ if __name__ == "__main__":
     hf.close()
     print(f"Response data shape: {resp.shape}")
 
-    # Load GPT-1 (for brain scoring via encoding model)
-    print("Loading GPT-1 model...")
+    # Load GPT-1 (for brain scoring with EM)
+    print("Loading GPT-1")
     with open(os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "vocab.json"), "r") as f:
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
@@ -85,10 +83,10 @@ if __name__ == "__main__":
     print("GPT-1 loaded")
 
     # Load encoding model
-    print("Loading encoding model...")
+    print("Loading encoding model")
     load_location = os.path.join(config.MODEL_DIR, args.subject)
     em_path = args.encoding_model or os.path.join(
-        load_location, "encoding_model_%s.npz" % gpt_checkpoint)
+        load_location, f"encoding_model_{gpt_checkpoint}.npz")
     print(f"Encoding model: {em_path}")
     encoding_model = np.load(em_path)
     em = EncodingModel(resp, encoding_model["weights"], encoding_model["voxels"],
@@ -102,14 +100,13 @@ if __name__ == "__main__":
                        encoding_model["word_stats"][0], device=config.SM_DEVICE)
 
     # Load BERT
-    print(f"Loading BERT ({args.bert_model})...")
+    print(f"Loading BERT ({args.bert_model})")
     from transformers import BertForMaskedLM, BertTokenizerFast
     bert_tokenizer = BertTokenizerFast.from_pretrained(args.bert_model)
     bert_model = BertForMaskedLM.from_pretrained(args.bert_model).eval().to(config.GPT_DEVICE)
     print("BERT loaded")
 
-    # Build decoder vocab ↔ BERT vocab intersection
-    # Only single-token BERT words that are in the decoder vocabulary
+    # Build vocab set which only includes single token words
     decoder_vocab_set = set(decoder_vocab)
     bert_vocab_ids = {}
     for word in decoder_vocab:
@@ -122,7 +119,6 @@ if __name__ == "__main__":
           f"({len(bert_vocab_ids)/len(decoder_vocab)*100:.1f}%)")
 
     # Create decoder
-    print("Initializing mask-predict decoder...")
     decoder = MaskPredictDecoder(
         initial_words=initial_words,
         word_times=word_times,
@@ -143,7 +139,7 @@ if __name__ == "__main__":
     )
 
     # Run refinement
-    print(f"\nRefining {len(initial_words)} words...")
+    print(f"\nRefining {len(initial_words)} words")
     t_start = time.time()
     refined_words = decoder.refine(verbose=True)
     total_time = time.time() - t_start
@@ -168,4 +164,3 @@ if __name__ == "__main__":
     # Print refined text
     print(f"\nRefined text ({len(refined_words)} words):")
     print(" ".join(refined_words))
-    print("\nDone!")
