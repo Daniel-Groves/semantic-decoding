@@ -2,7 +2,23 @@
 
 This repository contains code used in the paper "Semantic reconstruction of continuous language from non-invasive brain recordings" by Jerry Tang, Amanda LeBel, Shailee Jain, and Alexander G. Huth.  
 
-## Usage
+It has been extended as part of a dissertation project by Daniel Groves which explores improvements to the original pipeline.
+
+## Extensions
+
+The following approaches were implemented and evaluated:
+- **GPT-2 XL Encoding Model** (`GPT2XL.py`) - Upgraded LM with layer selection and hybrid decoding
+- **MCTS Decoder** (`MCTSDecoder.py`, `run_mcts_decoder.py`)
+- **Mask-Predict Decoder** (`MaskPredictDecoder.py`, `run_maskpredict_decoder.py`) - Iterative refinement using BERT
+- **Cross-attention decoder** (`brain_data_utils.py`, `fit_pca.py`, `BrainConditionedGPT.py`, `train_contrastive.py`, `train_brain_conditioned.py`, `run_brain_conditioned_decoder.py`) - Flamingo-style gated cross-attention on frozen GPT-1
+
+Supporting scripts in `experiments/`:
+- `layer_search.py`, `layer_search_mixed.py` - Used for evaluating different layer selections for GPT-2 XL
+- `holdout_eval.py` - Leave-one-session-out cross-validation
+- `check_alphas.py` - Regularisation analysis
+- `permutation_test.py` - Statistical significance testing
+
+## Original Usage
 
 1. Download [language model data](https://utexas.box.com/shared/static/7ab8qm5e3i0vfsku0ee4dc6hzgeg7nyh.zip) and extract contents into new `data_lm/` directory. 
 
